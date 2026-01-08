@@ -2,7 +2,25 @@ import datetime
 import hashlib
 import json
 from dataclasses import dataclass
+from typing import Optional
+from pydantic import BaseModel, Field
 
+class OCRFrontMatter(BaseModel):
+    """
+    Metadata extracted by the model. 
+    Fields are made Optional to prevent pipeline failure if the model omits them.
+    """
+    primary_language: Optional[str] = Field(None, description="The primary language of the document")
+    is_readable: Optional[bool] = Field(True, description="Whether the page is readable")
+    is_blank: Optional[bool] = Field(False, description="Whether the page is blank")
+    is_understandable: Optional[bool] = Field(True, description="Whether the page content is understandable")
+
+class OCRPageResponse(BaseModel):
+    """
+    The structured response expected from the model.
+    """
+    front_matter: OCRFrontMatter
+    natural_text: str = Field(..., description="The main text content extracted from the page")
 
 @dataclass(frozen=True)
 class PdfOutput:
@@ -19,14 +37,15 @@ class PdfOutput:
             # Kwargs are added as extra metadata
             **kwargs,
         }
+        # Create a stable ID based on the content
         id_ = hashlib.sha1(self.text.encode()).hexdigest()
 
         dolma_doc = {
             "id": id_,
             "text": self.text,
-            "source": "s2pdf",
-            "added": datetime.datetime.now().strftime("%Y-%m-%d"),
-            "created": datetime.datetime.now().strftime("%Y-%m-%d"),
+            "source": "olmocr",
+            "added": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "created": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "metadata": metadata,
         }
 
