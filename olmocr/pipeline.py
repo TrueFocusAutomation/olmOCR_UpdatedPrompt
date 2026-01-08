@@ -142,7 +142,7 @@ class PageResult:
 
 
 async def build_page_query(local_pdf_path: str, page: int, target_longest_image_dim: int, image_rotation: int = 0, model_name: str = "olmocr") -> dict:
-    MAX_TOKENS = 8000
+    MAX_TOKENS = 16384
     assert image_rotation in [0, 90, 180, 270], "Invalid image rotation provided in build_page_query"
 
     # Allow the page rendering to process in the background, but limit the number of workers otherwise you can overload the system
@@ -310,8 +310,15 @@ async def process_page(args, worker_id: int, pdf_orig_path: str, pdf_local_path:
 
         # Enable guided decoding regex if needed
         if args.guided_decoding:
+            # This improved regex allows fields to be optional and handles the new format better
             query["guided_regex"] = (
-                r"---\nprimary_language: (?:[a-z]{2}|null)\nis_rotation_valid: (?:True|False|true|false)\nrotation_correction: (?:0|90|180|270)\nis_table: (?:True|False|true|false)\nis_diagram: (?:True|False|true|false)\n(?:---|---\n[\s\S]+)"
+                r"---\n"
+                r"(primary_language: (?:[a-z]{2}|null)\n)?"
+                r"(is_rotation_valid: (?:True|False|true|false)\n)?"
+                r"(rotation_correction: (?:0|90|180|270)\n)?"
+                r"(is_table: (?:True|False|true|false)\n)?"
+                r"(is_diagram: (?:True|False|true|false)\n)?"
+                r"(?:---|---\n[\s\S]+)"
             )
 
         logger.debug(f"Built page query for {pdf_orig_path}-{page_num}")
